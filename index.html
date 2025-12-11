@@ -1,59 +1,227 @@
-<div>Teachable Machine Image Model</div>
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-<script type="text/javascript">
-    // More API functions here:
-    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Healthy vs Unhealthy Foods Classifier</title>
 
-    // the link to your model provided by Teachable Machine export panel
-    const URL = "./my_model/";
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-    let model, webcam, labelContainer, maxPredictions;
-
-    // Load the image model and setup the webcam
-    async function init() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        // load the model and metadata
-        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-        // or files from your local hard drive
-        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
-
-        // Convenience function to setup a webcam
-        const flip = true; // whether to flip the webcam
-        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-        await webcam.setup(); // request access to the webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
-
-        // append elements to the DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+    <style>
+        body {
+            margin: 0;
+            font-family: "Poppins", sans-serif;
+            background: #f8f3ff; /* pastel lavender */
+            color: #333;
+            text-align: center;
         }
-    }
 
-    async function loop() {
-        webcam.update(); // update the webcam frame
-        await predict();
-        window.requestAnimationFrame(loop);
-    }
-
-    // run the webcam image through the image model
-    async function predict() {
-        // predict can take in an image, video or canvas html element
-        const prediction = await model.predict(webcam.canvas);
-        for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-            labelContainer.childNodes[i].innerHTML = classPrediction;
+        h1, h2, h3 {
+            color: #555;
         }
-    }
-</script>
+
+        section {
+            padding: 50px 20px;
+        }
+
+        /* Pastel color palette */
+        :root {
+            --pastel-pink: #ffb3c6;
+            --pastel-blue: #bde0fe;
+            --pastel-green: #caffbf;
+            --pastel-yellow: #fdffb6;
+            --pastel-purple: #e4c1f9;
+        }
+
+        /* Hero Section */
+        #hero {
+            background: linear-gradient(135deg, var(--pastel-blue), var(--pastel-green));
+            padding: 80px 20px;
+            border-bottom-left-radius: 40px;
+            border-bottom-right-radius: 40px;
+        }
+
+        #hero h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        #hero p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: auto;
+        }
+
+        /* Start Button */
+        button {
+            padding: 14px 28px;
+            background: var(--pastel-purple);
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #333;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: var(--pastel-pink);
+            transform: scale(1.05);
+        }
+
+        /* Webcam Container */
+        #webcam-container canvas {
+            border-radius: 20px;
+            border: 6px solid var(--pastel-yellow);
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        /* Glow animations for each prediction */
+        .glow-healthy { box-shadow: 0 0 25px #7ae582; }
+        .glow-unhealthy { box-shadow: 0 0 25px #ff6b6b; }
+        .glow-carb { box-shadow: 0 0 25px #ffd93d; }
+        .glow-protein { box-shadow: 0 0 25px #6ec6ff; }
+        .glow-fat { box-shadow: 0 0 25px #f9c74f; }
+
+        #label-container div {
+            margin-top: 6px;
+            font-size: 1.1rem;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            display: inline-block;
+            min-width: 220px;
+        }
+
+        /* Video Section */
+        #video-box {
+            width: 90%;
+            max-width: 700px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HERO / TITLE -->
+    <section id="hero">
+        <h1>Healthy Food Classifier</h1>
+        <p>
+            Using Teachable Machine + AI, this project identifies healthy vs unhealthy foods using gestures 
+            and classifies food images into carb, protein, and fat sources.
+        </p>
+
+        <button onclick="init()">Start Model</button>
+    </section>
+
+    <!-- Instructions -->
+    <section id="instructions">
+        <h2>How to Use</h2>
+        <p>Follow these steps to interact with the model:</p>
+        <ul style="list-style:none; padding:0; font-size:1.1rem;">
+            <li>👍 Show a <b>thumbs up</b> for healthy foods</li>
+            <li>👎 Show a <b>thumbs down</b> for unhealthy foods</li>
+            <li>🖼️ Hold up pictures of foods to classify them as:</li>
+            <li style="margin-top:10px;">🍞 <b>Carbs</b> — bread, pasta, rice</li>
+            <li>🍗 <b>Protein</b> — meat, eggs, beans</li>
+            <li>🧈 <b>Fats</b> — cheese, nuts, oils</li>
+        </ul>
+    </section>
+
+    <!-- MODEL SECTION -->
+    <section id="model">
+        <h2>Your AI Model</h2>
+        <div id="webcam-container"></div>
+        <div id="label-container"></div>
+    </section>
+
+    <!-- VIDEO SECTION -->
+    <section id="video">
+        <h2>Project Video (1–2 Minutes)</h2>
+        <div id="video-box">
+            <p><i>Insert your recorded explanation video here.</i></p>
+        </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section id="about">
+        <h2>About This Project</h2>
+        <p style="max-width:700px;margin:auto;">
+            This project helps users learn about food healthiness and macronutrient categories.  
+            It can benefit students, teachers, athletes, and anyone trying to improve their nutrition knowledge.
+        </p>
+    </section>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <script>
+        const URL = "./my_model/";
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true;
+            webcam = new tmImage.Webcam(250, 250, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+
+            let highestClass = null;
+            let highestProb = 0;
+
+            for (let i = 0; i < prediction.length; i++) {
+                const p = prediction[i];
+                labelContainer.childNodes[i].innerHTML =
+                    p.className + ": " + p.probability.toFixed(2);
+
+                if (p.probability > highestProb) {
+                    highestProb = p.probability;
+                    highestClass = p.className;
+                }
+            }
+
+            let canvas = webcam.canvas;
+            canvas.className = "";
+
+            if (highestClass.includes("Healthy")) canvas.classList.add("glow-healthy");
+            if (highestClass.includes("Unhealthy")) canvas.classList.add("glow-unhealthy");
+            if (highestClass.includes("Carb")) canvas.classList.add("glow-carb");
+            if (highestClass.includes("Protein")) canvas.classList.add("glow-protein");
+            if (highestClass.includes("Fat")) canvas.classList.add("glow-fat");
+        }
+    </script>
+
+</body>
+</html>
